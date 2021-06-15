@@ -7,6 +7,7 @@ export default createStore({
   state: {
     networkId: null,
     balance: 0,
+    DGLBalance: 0,
     account: null,
     contractInstance: null
   },
@@ -19,6 +20,10 @@ export default createStore({
       console.log('setBalance Mutation being executed', balance)
       state.balance = balance
     },
+    setDGLBalance (state, DGLBalance) {
+      console.log('setDGLBalance Mutation being executed', DGLBalance)
+      state.DGLBalance = DGLBalance
+    },
     setNetworkId (state, networkId) {
       console.log('setNetworkId Mutation being executed', networkId)
       state.networkId = networkId
@@ -27,6 +32,7 @@ export default createStore({
       console.log('pollWeb3Instance mutation being executed', payload)
       state.account = payload.accounts[0]
       state.balance = parseInt(payload.balance,10)/Math.pow(10, 18)
+      state.DGLBalance = parseInt(payload.DGLBalance,10)/Math.pow(10, 18)
     },
     registerContractInstance (state, payload) {
       console.log('Contract instance: ', payload)
@@ -38,18 +44,22 @@ export default createStore({
       console.log('registerWeb3 Action being executed')
       getWeb3().then(res => {
         if(res) {
+          let contract = getContract()
+          commit('registerContractInstance', contract)
           window.web3.eth.getAccounts().then(accounts => {
             if (accounts.length > 0) {
               commit('setAccount', accounts[0])
               window.web3.eth.getBalance(accounts[0]).then(balance => {
                 commit('setBalance', parseInt(balance,10)/Math.pow(10, 18))
               })
+              contract.methods.balanceOf(accounts[0]).call({from: accounts[0]}, function(err, result){
+                commit('setDGLBalance', parseInt(result,10)/Math.pow(10, 18))
+              });
             }
           })
           window.web3.eth.net.getId().then(networkId => {
             commit('setNetworkId', networkId)
           })
-          commit('registerContractInstance', getContract())
           pollWeb3()
         }
       })

@@ -11,15 +11,19 @@ let pollWeb3 = function () {
       let accounts = await web3.eth.getAccounts()
       let balance = 0
       let dglBal = 0
+      let stake = 0
       if (accounts.length > 0) {
         balance = await web3.eth.getBalance(accounts[0])
-        if (store.state.contractInstance)
+        if (store.state.contractInstance) {
           dglBal = await store.state.contractInstance.methods.balanceOf(accounts[0]).call({from: accounts[0]})
+          stake = await store.state.contractInstance.methods.lockedAmountOf(accounts[0]).call({from: accounts[0]})
+        }
       }
       store.dispatch('pollWeb3', {
         accounts: accounts,
         balance: parseInt(balance, 10),
-        DGLBalance: dglBal
+        DGLBalance: dglBal,
+        stakedAmount: stake
       })
     }
   }, 2000)

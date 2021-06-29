@@ -8,6 +8,8 @@ export default createStore({
     networkId: null,
     balance: 0,
     DGLBalance: 0,
+    stakedAmount: 0,
+    stakeAmount: 0,
     account: null,
     contractInstance: null
   },
@@ -28,11 +30,20 @@ export default createStore({
       console.log('setNetworkId Mutation being executed', networkId)
       state.networkId = networkId
     },
+    setStakedAmount (state, stakedAmount) {
+      console.log('setStakedAmount Mutation being executed', stakedAmount)
+      state.stakedAmount = stakedAmount
+    },
+    setStakeAmount (state, stakeAmount) {
+      console.log('setStakeAmount Mutation being executed', stakeAmount)
+      state.stakeAmount = stakeAmount
+    },
     pollWeb3Instance (state, payload) {
       console.log('pollWeb3Instance mutation being executed', payload)
       state.account = payload.accounts[0]
       state.balance = parseInt(payload.balance,10)/Math.pow(10, 18)
       state.DGLBalance = parseInt(payload.DGLBalance,10)/Math.pow(10, 18)
+      state.stakedAmount = parseInt(payload.stakedAmount,10)/Math.pow(10, 18)
     },
     registerContractInstance (state, payload) {
       console.log('Contract instance: ', payload)
@@ -54,6 +65,12 @@ export default createStore({
               })
               contract.methods.balanceOf(accounts[0]).call({from: accounts[0]}, function(err, result){
                 commit('setDGLBalance', parseInt(result,10)/Math.pow(10, 18))
+              });
+              contract.methods.stakeAmount().call({from: accounts[0]}, function(err, result){
+                commit('setStakeAmount', parseInt(result,10)/Math.pow(10, 18))
+              });
+              contract.methods.lockedAmountOf(accounts[0]).call({from: accounts[0]}, function(err, result){
+                commit('setStakedAmount', parseInt(result,10)/Math.pow(10, 18))
               });
             }
           })

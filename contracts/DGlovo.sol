@@ -39,7 +39,7 @@ contract DGlovo is IERC20{
   // Constructor
   constructor(uint256 total) {
       lastId = 0;
-      stakeAmount = 10;
+      stakeAmount = 10000000000000000000;
       totalSupply_ = total;
     	balances[msg.sender] = totalSupply_;
   }
@@ -81,16 +81,21 @@ contract DGlovo is IERC20{
     return true;
   }
 
-  function lockStake() public returns (bool) {
-    require(stakeAmount >= balances[msg.sender]);
-    require(0 == locked[msg.sender]);
+  function lockStake() hasEnoughToStake(msg.sender) public returns (bool) {
+    require(locked[msg.sender] < stakeAmount);
 
-    locked[msg.sender] = locked[msg.sender].add(stakeAmount);
+    uint quantity = stakeAmount - locked[msg.sender];
+    locked[msg.sender] = locked[msg.sender].add(quantity);
+    balances[msg.sender] = balances[msg.sender].sub(quantity);
     return true;
   }
 
+  function lockedAmountOf(address stakeOwner) public view virtual returns (uint) {
+    return locked[stakeOwner];
+  }
+
   function unlockStake() public returns (bool) {
-    require(0 < locked[msg.sender]);
+    require(locked[msg.sender] > 0);
 
     balances[msg.sender] = balances[msg.sender].add(locked[msg.sender]);
     locked[msg.sender] = 0;
@@ -105,15 +110,19 @@ contract DGlovo is IERC20{
 
   modifier isRequester(uint orderId) { require(orders[orderId].requester == msg.sender); _; }
 
-  function createOrder(string memory petition) public {
+  modifier hasEnoughToStake(address stakeOwner) { require(balances[stakeOwner] >= (stakeAmount - locked[stakeOwner])); _; }
+
+  modifier isStaking(address stakeOwner) { require(locked[stakeOwner] >= stakeAmount); _; }
+
+  function createOrder(string memory petition, uint256 timeLimit, uint256 price) public {
     orders[lastId] = Order({
         petition: petition,
         creationTime: block.timestamp,
         requester: msg.sender,
         worker: address(0),
-        timeLimit: 100,
+        timeLimit: timeLimit,
         completed: false,
-        price: 10
+        price: price
       });
     orderids.push(lastId);
     lastId += 1;

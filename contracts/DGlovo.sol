@@ -14,6 +14,7 @@ contract DGlovo is IERC20{
     uint timeLimit;
     bool completed;
     uint price;
+    uint256 lockedAmount;
   }
 
   string public constant name = "DGlovo";
@@ -112,9 +113,16 @@ contract DGlovo is IERC20{
 
   modifier hasEnoughToStake(address stakeOwner) { require(balances[stakeOwner] >= (stakeAmount - locked[stakeOwner])); _; }
 
+  modifier hasMoreThan(address user, uint256 value) { require(balances[user] >= value); _; }
+
+  modifier isLessThanStake(uint256 value) { require(stakeAmount >= value); _; }
+
   modifier isStaking(address stakeOwner) { require(locked[stakeOwner] >= stakeAmount); _; }
 
-  function createOrder(string memory petition, uint256 timeLimit, uint256 price) public {
+  modifier hasNoWorker(uint orderId) { require(orders[orderId].worker == address(0)); _; }
+
+  function createOrder(string memory petition, uint256 timeLimit, uint256 price) hasMoreThan(msg.sender, stakeAmount) isLessThanStake(price) public {
+    balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
     orders[lastId] = Order({
         petition: petition,
         creationTime: block.timestamp,
@@ -122,20 +130,24 @@ contract DGlovo is IERC20{
         worker: address(0),
         timeLimit: timeLimit,
         completed: false,
-        price: price
+        price: price,
+        lockedAmount: stakeAmount
       });
     orderids.push(lastId);
     lastId += 1;
   }
 
-  function assignOrder(uint orderId) public {
+  function assignOrder(uint orderId) hasNoWorker(orderId) isStaking(msg.sender) public {
+    locked[msg.sender] = locked[msg.sender].sub(orders[orderId].lockedAmount);
     orders[orderId].worker = msg.sender;
-    //TODO: pay some tokens
   }
 
   function completeOrder(uint orderId) isRequester(orderId) public {
+    balances[msg.sender] = balances[msg.sender].add(orders[orderId].lockedAmount);
+    locked[orders[orderId].worker] = locked[orders[orderId].worker].add(orders[orderId].lockedAmount);
     orders[orderId].completed = true;
-    //TODO: return tokens to worker + payout
+    balances[msg.sender] = balances[msg.sender].sub(orders[orderId].price);
+    balances[orders[orderId].worker] = balances[orders[orderId].worker].add(orders[orderId].price);
   }
 }
 

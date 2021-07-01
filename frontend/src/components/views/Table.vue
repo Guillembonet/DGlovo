@@ -12,6 +12,8 @@
         <th scope="col">Price</th>
         <th scope="col">Time</th>
         <th scope="col">Time Limit</th>
+        <th scope="col" v-show="this.$store.state.stakedAmount >= this.$store.state.stakeAmount">Assign to me</th>
+        <th scope="col">Complete</th>
       </tr>
     </thead>
     <tbody>
@@ -21,6 +23,14 @@
         <td>{{ order.price }} DGL</td>
         <td>{{ new Date(order.time * 1000).toTimeString() }}</td>
         <td>{{ new Date(order.time * 1000 + order.timeLimit * 1000).toTimeString() }}</td>
+        <td v-show="this.$store.state.stakedAmount >= this.$store.state.stakeAmount">
+          <button type="button" class="btn btn-primary" v-show="order.worker == '0x0000000000000000000000000000000000000000'" v-on:click="assignOrder(order.id)">Assign</button>
+          <button type="button" class="btn btn-primary" disabled v-show="order.worker == this.$store.state.account">Assigned</button>
+        </td>
+        <td>
+          <button type="button" class="btn btn-primary" v-show="order.worker != '0x0000000000000000000000000000000000000000'
+          && order.requester == this.$store.state.account" v-on:click="completeOrder(order.id)">Complete</button>
+        </td>
       </tr>
     </tbody>
   </table>
@@ -109,7 +119,23 @@ export default {
           });
         }
       });
-    }
+    },
+    assignOrder: async function (orderId) {
+      let self = this
+      this.$store.state.contractInstance.methods.assignOrder(orderId).send({from: this.account}, function(error, transactionHash){
+        console.log(error)
+        console.log(transactionHash)
+        self.getOrders()
+      });
+    },
+    completeOrder: async function (orderId) {
+      let self = this
+      this.$store.state.contractInstance.methods.completeOrder(orderId).send({from: this.account}, function(error, transactionHash){
+        console.log(error)
+        console.log(transactionHash)
+        self.getOrders()
+      });
+    },
   }
 }
 </script>

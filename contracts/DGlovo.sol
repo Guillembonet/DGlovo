@@ -45,6 +45,20 @@ contract DGlovo is IERC20{
     	balances[msg.sender] = totalSupply_;
   }
 
+  modifier isRequester(uint orderId) { require(orders[orderId].requester == msg.sender); _; }
+
+  modifier hasEnoughToStake(address stakeOwner) { require(balances[stakeOwner] >= (stakeAmount - locked[stakeOwner])); _; }
+
+  modifier hasMoreThan(address user, uint256 value) { require(balances[user] >= value); _; }
+
+  modifier isLessThanStake(uint256 value) { require(stakeAmount >= value); _; }
+
+  modifier isStaking(address stakeOwner) { require(locked[stakeOwner] >= stakeAmount); _; }
+
+  modifier hasNoWorker(uint orderId) { require(orders[orderId].worker == address(0)); _; }
+
+  modifier isLate(uint orderId) { require(orders[orderId].creationTime + orders[orderId].timeLimit > block.timestamp && !orders[orderId].completed); _; }
+
   function totalSupply() public view virtual override returns (uint256) {
   	return totalSupply_;
   }
@@ -109,18 +123,6 @@ contract DGlovo is IERC20{
     return true;
   }
 
-  modifier isRequester(uint orderId) { require(orders[orderId].requester == msg.sender); _; }
-
-  modifier hasEnoughToStake(address stakeOwner) { require(balances[stakeOwner] >= (stakeAmount - locked[stakeOwner])); _; }
-
-  modifier hasMoreThan(address user, uint256 value) { require(balances[user] >= value); _; }
-
-  modifier isLessThanStake(uint256 value) { require(stakeAmount >= value); _; }
-
-  modifier isStaking(address stakeOwner) { require(locked[stakeOwner] >= stakeAmount); _; }
-
-  modifier hasNoWorker(uint orderId) { require(orders[orderId].worker == address(0)); _; }
-
   function createOrder(string memory petition, uint256 timeLimit, uint256 price) hasMoreThan(msg.sender, stakeAmount) isLessThanStake(price) public {
     balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
     orders[lastId] = Order({
@@ -148,6 +150,20 @@ contract DGlovo is IERC20{
     orders[orderId].completed = true;
     balances[msg.sender] = balances[msg.sender].sub(orders[orderId].price);
     balances[orders[orderId].worker] = balances[orders[orderId].worker].add(orders[orderId].price);
+  }
+
+  function cancelOrder(uint orderId) hasNoWorker(orderId) public {
+    balances[msg.sender] = balances[msg.sender].add(orders[orderId].lockedAmount);
+    orders[orderId].completed = true;
+  }
+
+  function uncompletedOrder(uint orderId) isRequester(orderId) isLate(orderId) public {
+    balances[msg.sender] = balances[msg.sender].add(orders[orderId].lockedAmount);
+    locked[orders[orderId].worker] = locked[orders[orderId].worker].add(orders[orderId].lockedAmount);
+    orders[orderId].completed = true;
+    balances[msg.sender] = balances[msg.sender].sub(orders[orderId].price);
+    locked[orders[orderId].worker] = locked[orders[orderId].worker].sub(orders[orderId].price);
+    totalSupply_ = totalSupply_.sub(orders[orderId].price*2);
   }
 }
 
